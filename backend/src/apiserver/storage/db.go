@@ -22,6 +22,7 @@ import (
 
 	"github.com/VividCortex/mysqlerr"
 	"github.com/go-sql-driver/mysql"
+	postgres "github.com/lib/pq"
 	sqlite3 "github.com/mattn/go-sqlite3"
 )
 
@@ -107,6 +108,37 @@ func (d SQLiteDialect) Concat(exprs []string, separator string) string {
 	return strings.Join(exprs, separatorSQL)
 }
 
+// PostgresDialect implements SQLDialect with postgres dialect implementation.
+type PostgresDialect struct{}
+
+func (d PostgresDialect) GroupConcat(expr string, separator string) string {
+	var buffer bytes.Buffer
+	buffer.WriteString("STRING_AGG(")
+	buffer.WriteString(expr)
+	if separator != "" {
+		buffer.WriteString(fmt.Sprintf(", \"%s\"", separator))
+	}
+	buffer.WriteString(")")
+	return buffer.String()
+}
+
+func (d PostgresDialect) Concat(exprs []string, separator string) string {
+	separatorSQL := ","
+	if separator != "" {
+		separatorSQL = fmt.Sprintf(`,"%s",`, separator)
+	}
+	return fmt.Sprintf("CONCAT(%s)", strings.Join(exprs, separatorSQL))
+}
+
+func (d PostgresDialect) IsDuplicateError(err error) bool {
+	sqlError, ok := err.(*postgres.Error)
+	return ok && sqlError.Code.Name() == "unique_violation"
+}
+
+func (d PostgresDialect) SelectForUpdate(query string) string {
+	return query + " FOR UPDATE"
+}
+
 func (d MySQLDialect) SelectForUpdate(query string) string {
 	return query + " FOR UPDATE"
 }
@@ -126,4 +158,8 @@ func NewMySQLDialect() MySQLDialect {
 
 func NewSQLiteDialect() SQLiteDialect {
 	return SQLiteDialect{}
+}
+
+func NewPostgresDialect() PostgresDialect {
+	return PostgresDialect{}
 }

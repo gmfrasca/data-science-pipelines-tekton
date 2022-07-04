@@ -41,13 +41,13 @@ const (
 	minioServiceSecure     = "MINIO_SERVICE_SECURE"
 	pipelineBucketName     = "MINIO_PIPELINE_BUCKET_NAME"
 	pipelinePath           = "MINIO_PIPELINE_PATH"
-	mysqlServiceHost       = "DBConfig.Host"
-	mysqlServicePort       = "DBConfig.Port"
-	mysqlUser              = "DBConfig.User"
-	mysqlPassword          = "DBConfig.Password"
-	mysqlDBName            = "DBConfig.DBName"
-	mysqlGroupConcatMaxLen = "DBConfig.GroupConcatMaxLen"
-	mysqlExtraParams       = "DBConfig.ExtraParams"
+	dbServiceHost          = "DBConfig.Host"
+	dbServicePort          = "DBConfig.Port"
+	dbUser                 = "DBConfig.User"
+	dbPassword             = "DBConfig.Password"
+	dbName                 = "DBConfig.DBName"
+	dbGroupConcatMaxLen    = "DBConfig.GroupConcatMaxLen"
+	dbExtraParams          = "DBConfig.ExtraParams"
 	archiveLogFileName     = "ARCHIVE_LOG_FILE_NAME"
 	archiveLogPathPrefix   = "ARCHIVE_LOG_PATH_PREFIX"
 	dbConMaxLifeTime       = "DBConfig.ConMaxLifeTime"
@@ -214,6 +214,8 @@ func initDBClient(initConnectionTimeout time.Duration) *storage.DB {
 	switch driverName {
 	case "mysql":
 		arg = initMysql(driverName, initConnectionTimeout)
+	case "postgres":
+		arg = initPostgres(driverName, initConnectionTimeout)
 	default:
 		glog.Fatalf("Driver %v is not supported", driverName)
 	}
@@ -330,13 +332,13 @@ func initDBClient(initConnectionTimeout time.Duration) *storage.DB {
 // Format would be something like root@tcp(ip:port)/dbname?charset=utf8&loc=Local&parseTime=True
 func initMysql(driverName string, initConnectionTimeout time.Duration) string {
 	mysqlConfig := client.CreateMySQLConfig(
-		common.GetStringConfigWithDefault(mysqlUser, "root"),
-		common.GetStringConfigWithDefault(mysqlPassword, ""),
-		common.GetStringConfigWithDefault(mysqlServiceHost, "mysql"),
-		common.GetStringConfigWithDefault(mysqlServicePort, "3306"),
+		common.GetStringConfigWithDefault(dbUser, "root"),
+		common.GetStringConfigWithDefault(dbPassword, ""),
+		common.GetStringConfigWithDefault(dbServiceHost, "mysql"),
+		common.GetStringConfigWithDefault(dbServicePort, "3306"),
 		"",
-		common.GetStringConfigWithDefault(mysqlGroupConcatMaxLen, "1024"),
-		common.GetMapConfig(mysqlExtraParams),
+		common.GetStringConfigWithDefault(dbGroupConcatMaxLen, "1024"),
+		common.GetMapConfig(dbExtraParams),
 	)
 
 	var db *sql.DB
@@ -359,9 +361,9 @@ func initMysql(driverName string, initConnectionTimeout time.Duration) string {
 	util.TerminateIfError(err)
 
 	// Create database if not exist
-	dbName := common.GetStringConfig(mysqlDBName)
+	createDbName := common.GetStringConfig(dbName)
 	operation = func() error {
-		_, err = db.Exec(fmt.Sprintf("CREATE DATABASE IF NOT EXISTS %s", dbName))
+		_, err = db.Exec(fmt.Sprintf("CREATE DATABASE IF NOT EXISTS %s", createDbName))
 		if err != nil {
 			return err
 		}
@@ -372,13 +374,66 @@ func initMysql(driverName string, initConnectionTimeout time.Duration) string {
 	err = backoff.Retry(operation, b)
 
 	util.TerminateIfError(err)
-	mysqlConfig.DBName = dbName
+	mysqlConfig.DBName = createDbName
 	// When updating, return rows matched instead of rows affected. This counts rows that are being
 	// set as the same values as before. If updating using a primary key and rows matched is 0, then
 	// it means this row is not found.
 	// Config reference: https://github.com/go-sql-driver/mysql#clientfoundrows
 	mysqlConfig.ClientFoundRows = true
 	return mysqlConfig.FormatDSN()
+}
+
+// Initialize the connection string for connecting to Postgres database
+// Format would be something like root@tcp(ip:port)/dbname?charset=utf8&loc=Local&parseTime=True
+func initPostgres(driverName string, initConnectionTimeout time.Duration) string {
+	postgresConfig := client.CreatePostgresConfig(
+		common.GetStringConfigWithDefault(dbUser, "root"),
+		common.GetStringConfigWithDefault(dbPassword, ""),
+		common.GetStringConfigWithDefault(dbServiceHost, "postgres"),
+		common.GetStringConfigWithDefault(dbServicePort, "5432"),
+		common.GetStringConfig(dbName),
+	)
+
+	var db *sql.DB
+	var err error
+	var operation = func() error {
+		db, err = sql.Open(driverName, postgresConfig.DSN)
+		if err != nil {
+			return err
+		}
+		return nil
+	}
+	b := backoff.NewExponentialBackOff()
+	b.MaxElapsedTime = initConnectionTimeout
+	//err = backoff.Retry(operation, b)
+	backoff.RetryNotify(operation, b, func(e error, duration time.Duration) {
+		glog.Errorf("%v", e)
+	})
+
+	defer db.Close()
+	util.TerminateIfError(err)
+
+	// Create database if not exist
+	createDbName := common.GetStringConfig(dbName)
+	operation = func() error {
+		_, err = db.Exec(fmt.Sprintf("CREATE DATABASE IF NOT EXISTS %s", createDbName))
+		if err != nil {
+			return err
+		}
+		return nil
+	}
+	b = backoff.NewExponentialBackOff()
+	b.MaxElapsedTime = initConnectionTimeout
+	err = backoff.Retry(operation, b)
+
+	util.TerminateIfError(err)
+	// postgresConfig.DBName = createDbName
+	// When updating, return rows matched instead of rows affected. This counts rows that are being
+	// set as the same values as before. If updating using a primary key and rows matched is 0, then
+	// it means this row is not found.
+	// Config reference: https://github.com/go-sql-driver/mysql#clientfoundrows
+	// postgresConfig.ClientFoundRows = true
+	return postgresConfig.DSN
 }
 
 func initMinioClient(initConnectionTimeout time.Duration) storage.ObjectStoreInterface {

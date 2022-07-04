@@ -18,6 +18,7 @@ import (
 	"fmt"
 
 	"github.com/go-sql-driver/mysql"
+	"gorm.io/driver/postgres"
 )
 
 func CreateMySQLConfig(user, password string, mysqlServiceHost string,
@@ -42,5 +43,14 @@ func CreateMySQLConfig(user, password string, mysqlServiceHost string,
 		Params:               params,
 		DBName:               dbName,
 		AllowNativePasswords: true,
+	}
+}
+
+func CreatePostgresConfig(user, password string, postgresServiceHost string, postgresServicePort string, dbName string) *postgres.Config {
+
+	dsn := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s", postgresServiceHost, postgresServicePort, user, password, dbName)
+
+	return &postgres.Config{
+		DSN: dsn,
 	}
 }
