@@ -24,9 +24,10 @@ require (
 	github.com/gorilla/mux v1.8.0
 	github.com/grpc-ecosystem/grpc-gateway v1.16.0
 	github.com/jinzhu/gorm v1.9.12
+	github.com/jinzhu/now v1.1.4 // indirect
 	github.com/kubeflow/pipelines/api v0.0.0-20211026071850-2e3fb5efff56
 	github.com/lestrrat-go/strftime v1.0.4
-	github.com/lib/pq v1.10.3 // indirect
+	github.com/lib/pq v1.10.3
 	github.com/mattn/go-sqlite3 v2.0.1+incompatible
 	github.com/minio/minio-go v6.0.14+incompatible
 	github.com/peterhellberg/duration v0.0.0-20191119133758-ec6baeebcd10
@@ -45,8 +46,6 @@ require (
 	google.golang.org/grpc v1.44.0
 	google.golang.org/grpc/cmd/protoc-gen-go-grpc v1.1.0
 	google.golang.org/protobuf v1.27.1
-	gorm.io/driver/postgres v1.3.7 // indirect
-	gorm.io/gorm v1.23.6
 	k8s.io/api v0.23.5
 	k8s.io/apimachinery v0.23.5
 	k8s.io/client-go v0.23.5

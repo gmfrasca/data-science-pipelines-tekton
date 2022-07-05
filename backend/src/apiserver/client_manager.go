@@ -35,22 +35,22 @@ import (
 )
 
 const (
-	minioServiceHost       = "MINIO_SERVICE_SERVICE_HOST"
-	minioServicePort       = "MINIO_SERVICE_SERVICE_PORT"
-	minioServiceRegion     = "MINIO_SERVICE_REGION"
-	minioServiceSecure     = "MINIO_SERVICE_SECURE"
-	pipelineBucketName     = "MINIO_PIPELINE_BUCKET_NAME"
-	pipelinePath           = "MINIO_PIPELINE_PATH"
-	dbServiceHost          = "DBConfig.Host"
-	dbServicePort          = "DBConfig.Port"
-	dbUser                 = "DBConfig.User"
-	dbPassword             = "DBConfig.Password"
-	dbName                 = "DBConfig.DBName"
-	dbGroupConcatMaxLen    = "DBConfig.GroupConcatMaxLen"
-	dbExtraParams          = "DBConfig.ExtraParams"
-	archiveLogFileName     = "ARCHIVE_LOG_FILE_NAME"
-	archiveLogPathPrefix   = "ARCHIVE_LOG_PATH_PREFIX"
-	dbConMaxLifeTime       = "DBConfig.ConMaxLifeTime"
+	minioServiceHost     = "MINIO_SERVICE_SERVICE_HOST"
+	minioServicePort     = "MINIO_SERVICE_SERVICE_PORT"
+	minioServiceRegion   = "MINIO_SERVICE_REGION"
+	minioServiceSecure   = "MINIO_SERVICE_SECURE"
+	pipelineBucketName   = "MINIO_PIPELINE_BUCKET_NAME"
+	pipelinePath         = "MINIO_PIPELINE_PATH"
+	dbServiceHost        = "DBConfig.Host"
+	dbServicePort        = "DBConfig.Port"
+	dbUser               = "DBConfig.User"
+	dbPassword           = "DBConfig.Password"
+	dbName               = "DBConfig.DBName"
+	dbGroupConcatMaxLen  = "DBConfig.GroupConcatMaxLen"
+	dbExtraParams        = "DBConfig.ExtraParams"
+	archiveLogFileName   = "ARCHIVE_LOG_FILE_NAME"
+	archiveLogPathPrefix = "ARCHIVE_LOG_PATH_PREFIX"
+	dbConMaxLifeTime     = "DBConfig.ConMaxLifeTime"
 
 	visualizationServiceHost = "ML_PIPELINE_VISUALIZATIONSERVER_SERVICE_HOST"
 	visualizationServicePort = "ML_PIPELINE_VISUALIZATIONSERVER_SERVICE_PORT"
@@ -210,12 +210,15 @@ func (c *ClientManager) Close() {
 func initDBClient(initConnectionTimeout time.Duration) *storage.DB {
 	driverName := common.GetStringConfig("DBConfig.DriverName")
 	var arg string
+	var dialect storage.SQLDialect
 
 	switch driverName {
 	case "mysql":
 		arg = initMysql(driverName, initConnectionTimeout)
+		dialect = storage.NewMySQLDialect()
 	case "postgres":
 		arg = initPostgres(driverName, initConnectionTimeout)
+		dialect = storage.NewPostgresDialect()
 	default:
 		glog.Fatalf("Driver %v is not supported", driverName)
 	}
@@ -325,7 +328,7 @@ func initDBClient(initConnectionTimeout time.Duration) *storage.DB {
 	}
 	rows.Close()
 
-	return storage.NewDB(db.DB(), storage.NewMySQLDialect())
+	return storage.NewDB(db.DB(), dialect)
 }
 
 // Initialize the connection string for connecting to Mysql database
@@ -392,6 +395,7 @@ func initPostgres(driverName string, initConnectionTimeout time.Duration) string
 		common.GetStringConfigWithDefault(dbServiceHost, "postgres"),
 		common.GetStringConfigWithDefault(dbServicePort, "5432"),
 		common.GetStringConfig(dbName),
+		common.GetMapConfig(dbExtraParams),
 	)
 
 	var db *sql.DB
@@ -427,12 +431,6 @@ func initPostgres(driverName string, initConnectionTimeout time.Duration) string
 	err = backoff.Retry(operation, b)
 
 	util.TerminateIfError(err)
-	// postgresConfig.DBName = createDbName
-	// When updating, return rows matched instead of rows affected. This counts rows that are being
-	// set as the same values as before. If updating using a primary key and rows matched is 0, then
-	// it means this row is not found.
-	// Config reference: https://github.com/go-sql-driver/mysql#clientfoundrows
-	// postgresConfig.ClientFoundRows = true
 	return postgresConfig.DSN
 }
 
