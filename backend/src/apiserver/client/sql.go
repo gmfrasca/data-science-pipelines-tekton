@@ -49,12 +49,12 @@ func CreateMySQLConfig(user, password string, mysqlServiceHost string,
 	}
 }
 
-func CreatePostgresConfig(user, password string, postgresServiceHost string, postgresServicePort string, dbName string, postgresExtraParams map[string]string) *postgresConfig {
+func CreatePostgresConfig(user, password string, postgresServiceHost string, postgresServicePort string, postgresExtraParams map[string]string) *postgresConfig {
 	// There doesn't seem to be a widely-used package that constructs a DSN from a Config
 	// or any other more programatic method than simply creating the string ourselves.
 	// For now, we'll use a simple struct to emulate this configuration
 	// Eventually, we should find a better postgres connection handlers  here.
-	dsn := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s", postgresServiceHost, postgresServicePort, user, password, dbName)
+	dsn := fmt.Sprintf("host=%s port=%s user=%s password=%s", postgresServiceHost, postgresServicePort, user, password)
 
 	for k, v := range postgresExtraParams {
 		dsn = fmt.Sprintf("%s %s=%s", dsn, k, v)

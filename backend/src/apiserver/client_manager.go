@@ -23,6 +23,7 @@ import (
 	"github.com/cenkalti/backoff"
 	"github.com/golang/glog"
 	"github.com/jinzhu/gorm"
+	_ "github.com/jinzhu/gorm/dialects/postgres"
 	_ "github.com/jinzhu/gorm/dialects/sqlite"
 	"github.com/kubeflow/pipelines/backend/src/apiserver/archive"
 	"github.com/kubeflow/pipelines/backend/src/apiserver/auth"
@@ -394,7 +395,6 @@ func initPostgres(driverName string, initConnectionTimeout time.Duration) string
 		common.GetStringConfigWithDefault(dbPassword, ""),
 		common.GetStringConfigWithDefault(dbServiceHost, "postgres"),
 		common.GetStringConfigWithDefault(dbServicePort, "5432"),
-		common.GetStringConfig(dbName),
 		common.GetMapConfig(dbExtraParams),
 	)
 
@@ -420,17 +420,35 @@ func initPostgres(driverName string, initConnectionTimeout time.Duration) string
 	// Create database if not exist
 	createDbName := common.GetStringConfig(dbName)
 	operation = func() error {
-		_, err = db.Exec(fmt.Sprintf("CREATE DATABASE IF NOT EXISTS %s", createDbName))
+		rows, err := db.Query("SELECT FROM pg_database WHERE datname = $1", createDbName)
 		if err != nil {
 			return err
 		}
+		if !rows.Next() {
+			_, err = db.Exec(fmt.Sprintf("CREATE DATABASE %s", createDbName))
+			if err != nil {
+				return err
+			}
+		}
 		return nil
 	}
+
 	b = backoff.NewExponentialBackOff()
 	b.MaxElapsedTime = initConnectionTimeout
 	err = backoff.Retry(operation, b)
 
 	util.TerminateIfError(err)
+
+	// Re-initialize the postgres config with the dbname
+	extraParams := common.GetMapConfig(dbExtraParams)
+	extraParams["dbname"] = createDbName
+	postgresConfig = client.CreatePostgresConfig(
+		common.GetStringConfigWithDefault(dbUser, "root"),
+		common.GetStringConfigWithDefault(dbPassword, ""),
+		common.GetStringConfigWithDefault(dbServiceHost, "postgres"),
+		common.GetStringConfigWithDefault(dbServicePort, "5432"),
+		extraParams,
+	)
 	return postgresConfig.DSN
 }
 
