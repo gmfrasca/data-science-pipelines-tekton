@@ -57,6 +57,15 @@ type SQLDialect interface {
 	// Modifies the SELECT clause in query to return one that locks the selected
 	// row for update.
 	SelectForUpdate(query string) string
+
+	// Dialect-specific query to get list of tables in a database
+	ShowTables() string
+
+	// Dialect-specific query to show an index
+	ShowIndex(tableName string, indexKey string) string
+
+	// Dialect-specific query to drop an index
+	DropIndex(tableName string, indexKey string) string
 }
 
 // MySQLDialect implements SQLDialect with mysql dialect implementation.
@@ -86,6 +95,18 @@ func (d MySQLDialect) IsDuplicateError(err error) bool {
 	return ok && sqlError.Number == mysqlerr.ER_DUP_ENTRY
 }
 
+func (d MySQLDialect) ShowTables() string {
+	return `show tables`
+}
+
+func (d MySqlDialect) ShowIndex(tableName string, indexKey string) string {
+	return fmt.Sprintf(`show index from %s where Key_name='%s'`, tableName, indexKey)
+}
+
+func (d MySqlDialect) DropIndex(tableName string, indexKey string) string {
+	return fmt.Sprintf(`drop index %s on %s`, indexKey, tableName)
+}
+
 // SQLiteDialect implements SQLDialect with sqlite dialect implementation.
 type SQLiteDialect struct{}
 
@@ -106,6 +127,18 @@ func (d SQLiteDialect) Concat(exprs []string, separator string) string {
 		separatorSQL = fmt.Sprintf(`||"%s"||`, separator)
 	}
 	return strings.Join(exprs, separatorSQL)
+}
+
+func (d SQLiteDialect) ShowTables() string {
+	return `show tables`
+}
+
+func (d SQLiteDialect) ShowIndex(tableName string, indexKey string) string {
+	return fmt.Sprintf(`show index from %s where Key_name='%s'`, tableName, indexKey)
+}
+
+func (d SQLiteDialect) DropIndex(tableName string, indexKey string) string {
+	return fmt.Sprintf(`drop index %s on %s`, indexKey, tableName)
 }
 
 // PostgresDialect implements SQLDialect with postgres dialect implementation.
@@ -137,6 +170,18 @@ func (d PostgresDialect) IsDuplicateError(err error) bool {
 
 func (d PostgresDialect) SelectForUpdate(query string) string {
 	return query + " FOR UPDATE"
+}
+
+func (d PostgresDialect) ShowTables() string {
+	return `SELECT tablename AS "Tables_from_mlpipeline" FROM pg_tables`
+}
+
+func (d PostgresDialect) ShowIndex(tableName string, indexKey string) string {
+	return fmt.Sprintf(`SELECT * from pg_indexes where tablename = '%s' AND indexname ='%s'`, tableName, indexKey)
+}
+
+func (d PostgresDialect) DropIndex(tableName string, indexKey string) string {
+	return fmt.Sprintf(`drop index %s`, indexKey)
 }
 
 func (d MySQLDialect) SelectForUpdate(query string) string {

@@ -233,7 +233,7 @@ func initDBClient(initConnectionTimeout time.Duration) *storage.DB {
 	// it needs initialization or data backfill.
 	var tableNames []string
 	var initializePipelineVersions = true
-	db.Raw(`show tables`).Pluck("Tables_in_mlpipeline", &tableNames)
+	db.Raw(dialect.ShowTables()).Pluck("Tables_in_mlpipeline", &tableNames)
 	for _, tableName := range tableNames {
 		if tableName == "pipeline_versions" {
 			initializePipelineVersions = false
@@ -320,12 +320,12 @@ func initDBClient(initConnectionTimeout time.Duration) *storage.DB {
 	}
 
 	// If the old unique index idx_pipeline_version_uuid_name on pipeline_versions exists, remove it.
-	rows, err := db.Raw(`show index from pipeline_versions where Key_name='idx_pipeline_version_uuid_name'`).Rows()
+	rows, err := db.Raw(dialect.ShowIndex("pipeline_versions", "idx_pipeline_version_uuid_name")).Rows()
 	if err != nil {
 		glog.Fatalf("Failed to query pipeline_version table's indices. Error: %s", err)
 	}
 	if rows.Next() {
-		db.Exec(`drop index idx_pipeline_version_uuid_name on pipeline_versions`)
+		db.Exec(dialect.DropIndex("pipeline_versions", "idx_pipeline_version_uuid_name"))
 	}
 	rows.Close()
 
