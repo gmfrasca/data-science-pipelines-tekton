@@ -75,7 +75,12 @@ spec:
           volumeMounts:
             - name: mysql-persistent-storage
               mountPath: /var/lib/mysql
+            - name: mysql-db-init-scripts
+              mountPath: /usr/share/container-scripts/mysql/user
       volumes:
         - name: mysql-persistent-storage
           persistentVolumeClaim:
             claimName: mysql-pv-claim
+        - name: mysql-db-init-scripts
+          secret:
+            secretName: mysql-db-init-scripts

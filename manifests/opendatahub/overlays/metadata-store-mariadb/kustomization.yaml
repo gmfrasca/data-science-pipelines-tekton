@@ -11,6 +11,7 @@ resources:
 
   # Secrets
   - ./secrets/mysql-secret.yaml
+  - ./secrets/mysql-db-init-scripts.yaml
 
   # PersistentVolumeClaims
   - ./persistentvolumeclaims/mysql-pv-claim.yaml
