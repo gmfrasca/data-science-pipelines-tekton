@@ -10,7 +10,7 @@ resources:
   - ./serviceaccounts/mysql.yaml
 
   # Secrets
-  - ./secrets/mysql-secret.yaml
+  #- ./secrets/mysql-secret.yaml
 
   # PersistentVolumeClaims
   - ./persistentvolumeclaims/mariadb-pv-claim.yaml
@@ -23,6 +23,11 @@ resources:
 
 generatorOptions:
   disableNameSuffixHash: true
+
+secretGenerator:
+  - name: mysql-secret
+    envs:
+    - .env.mariadb.secret
 
 images:
   - name: mysql
