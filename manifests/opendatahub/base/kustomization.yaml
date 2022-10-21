@@ -113,6 +113,11 @@ images:
   - name: viewer-crd-controller
     newName: quay.io/modh/odh-ml-pipelines-viewercontroller-container
     newTag: v1.18.0-2
+  - name: visualization-server
+    newName: gcr.io/ml-pipeline/visualization-server
+    newTag: 1.7.0
   - name: api-server
-    newName: quay.io/modh/odh-ml-pipelines-api-server-container
-    newTag: v1.18.0-2
+    #newName: quay.io/modh/odh-ml-pipelines-api-server-container
+    newName: quay.io/rmartine/odh-ml-pipelines-api-server-container-live
+    newTag: 1.0.0-5003
+    #newTag: v1.18.0-2
