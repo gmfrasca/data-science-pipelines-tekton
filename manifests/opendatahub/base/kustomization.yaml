@@ -10,6 +10,9 @@ resources:
   - ./customresourcedefinitions/viewers.yaml
   - ./customresourcedefinitions/scheduledworkflows.yaml
 
+  # ConfigMaps
+  - ./configmaps/ds-pipeline-samples.yaml
+
   # Deployments
   - ./deployments/ds-pipeline-persistenceagent.yaml
   - ./deployments/ds-pipeline-scheduledworkflow.yaml
