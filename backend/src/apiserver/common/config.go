@@ -48,6 +48,9 @@ const (
 	TerminateStatus                         string = "TERMINATE_STATUS"
 	MoveResultsImage                        string = "MOVERESULTS_IMAGE"
 	Path4InternalResults                    string = "PATH_FOR_INTERNAL_RESULTS"
+	ObjectStoreCredentialsSecret            string = "OBJECTSTORECONFIG_CREDENTIALSSECRET"
+	ObjectStoreCredentialsAccessKeyKey      string = "OBJECTSTORECONFIG_CREDENTIALSACCESSKEYKEY"
+	ObjectStoreCredentialsSecretKeyKey      string = "OBJECTSTORECONFIG_CREDENTIALSSECRETKEYKEY"
 	ObjectStoreAccessKey                    string = "OBJECTSTORECONFIG_ACCESSKEY"
 	ObjectStoreSecretKey                    string = "OBJECTSTORECONFIG_SECRETACCESSKEY"
 )
@@ -152,6 +155,18 @@ func GetObjectStoreAccessKey() string {
 
 func GetObjectStoreSecretKey() string {
 	return GetStringConfig(ObjectStoreSecretKey)
+}
+
+func GetObjectStoreCredentialsSecretName() string {
+	return GetStringConfigWithDefault(ObjectStoreCredentialsSecret, DefaultObjectStoreCredentialsSecret)
+}
+
+func GetObjectStoreCredentialsAccessKeyKey() string {
+	return GetStringConfigWithDefault(ObjectStoreCredentialsAccessKeyKey, DefaultObjectStoreCredentialsAccessKeyKey)
+}
+
+func GetObjectStoreCredentialsSecretKeyKey() string {
+	return GetStringConfigWithDefault(ObjectStoreCredentialsSecretKeyKey, DefaultObjectStoreCredentialsSecretKeyKey)
 }
 
 func GetMoveResultsImage() string {
