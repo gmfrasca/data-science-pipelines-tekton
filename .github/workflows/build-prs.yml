@@ -61,9 +61,9 @@ jobs:
     if: needs.fetch-data.outputs.pr_state == 'open'
     runs-on: ubuntu-latest
     needs: fetch-data
-    concurrency:
-      group: ${{ github.workflow }}-build-pr-image-${{ needs.fetch-data.outputs.pr_number }}
-      cancel-in-progress: true
+    # concurrency:
+    #   group: ${{ github.workflow }}-build-pr-images-${{ needs.fetch-data.outputs.pr_number }}
+    #   cancel-in-progress: true
     env:
       SOURCE_BRANCH: ${{ needs.fetch-data.outputs.head_sha }}
       TARGET_IMAGE_TAG: pr-${{ needs.fetch-data.outputs.pr_number }}
@@ -71,26 +71,27 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - image: ds-pipelines-api-server
-            dockerfile: backend/Dockerfile
-          - image: ds-pipelines-frontend
-            dockerfile: frontend/Dockerfile
-          - image: ds-pipelines-cacheserver
-            dockerfile: backend/Dockerfile.cacheserver
-          - image: ds-pipelines-persistenceagent
-            dockerfile: backend/Dockerfile.persistenceagent
-          - image: ds-pipelines-scheduledworkflow
-            dockerfile: backend/Dockerfile.scheduledworkflow
-          - image: ds-pipelines-viewercontroller
-            dockerfile: backend/Dockerfile.viewercontroller
+          # - image: ds-pipelines-api-server
+          #   dockerfile: backend/Dockerfile
+          # - image: ds-pipelines-frontend
+          #   dockerfile: frontend/Dockerfile
+          # - image: ds-pipelines-cacheserver
+          #   dockerfile: backend/Dockerfile.cacheserver
+          # - image: ds-pipelines-persistenceagent
+          #   dockerfile: backend/Dockerfile.persistenceagent
+          # - image: ds-pipelines-scheduledworkflow
+          #   dockerfile: backend/Dockerfile.scheduledworkflow
+          # - image: ds-pipelines-viewercontroller
+          #   dockerfile: backend/Dockerfile.viewercontroller
           - image: ds-pipelines-artifact-manager
             dockerfile: backend/artifact_manager/Dockerfile
-          - image: ds-pipelines-metadata-writer
-            dockerfile: backend/metadata_writer/Dockerfile
-          - image: ds-pipelines-metadata-grpc
-            dockerfile: third-party/ml-metadata/Dockerfile
-          - image: ds-pipelines-metadata-envoy
-            dockerfile: third-party/metadata_envoy/Dockerfile
+          # - image: ds-pipelines-metadata-writer
+          #   dockerfile: backend/metadata_writer/Dockerfile
+          # - image: ds-pipelines-metadata-grpc
+          #   dockerfile: third-party/ml-metadata/Dockerfile
+          # - image: ds-pipelines-metadata-envoy
+          #   dockerfile: third-party/metadata_envoy/Dockerfile
+          
     steps:
       - uses: actions/checkout@v3
       - name: Build Image
@@ -104,13 +105,14 @@ jobs:
   comment-on-pr:
     runs-on: ubuntu-latest
     needs: [fetch-data, build-pr-images]
-    concurrency:
-      group: ${{ github.workflow }}-build-pr-image-${{ needs.fetch-data.outputs.pr_number }}
-      cancel-in-progress: true
+    # concurrency:
+    #   group: ${{ github.workflow }}-comment-on-pr-${{ needs.fetch-data.outputs.pr_number }}
+    #   cancel-in-progress: true
     env:
       SOURCE_BRANCH: ${{ needs.fetch-data.outputs.head_sha }}
       TARGET_IMAGE_TAG: pr-${{ needs.fetch-data.outputs.pr_number }}        
     steps:
+      - uses: actions/checkout@v3
       - name: Echo PR metadata
         shell: bash
         env:
@@ -224,9 +226,9 @@ jobs:
     if: needs.fetch-data.outputs.pr_state == 'closed'
     runs-on: ubuntu-latest
     needs: fetch-data
-    concurrency:
-      group: ${{ github.workflow }}-clean-pr-images-${{ needs.fetch-data.outputs.pr_number }}
-      cancel-in-progress: true
+    # concurrency:
+    #   group: ${{ github.workflow }}-clean-pr-images-${{ needs.fetch-data.outputs.pr_number }}
+    #   cancel-in-progress: true
     env:
       TARGET_IMAGE_TAG: pr-${{ needs.fetch-data.outputs.pr_number }}
     strategy:
