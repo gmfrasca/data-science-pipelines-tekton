@@ -58,12 +58,10 @@ jobs:
           echo "event_action=${event_action}" >> $GITHUB_OUTPUT
 
   build-pr-images:
+    name: Build DSP Images
     if: needs.fetch-data.outputs.pr_state == 'open'
     runs-on: ubuntu-latest
     needs: fetch-data
-    concurrency:
-      group: ${{ github.workflow }}-build-pr-image-${{ needs.fetch-data.outputs.pr_number }}
-      cancel-in-progress: true
     env:
       SOURCE_BRANCH: ${{ needs.fetch-data.outputs.head_sha }}
       TARGET_IMAGE_TAG: pr-${{ needs.fetch-data.outputs.pr_number }}
@@ -102,15 +100,17 @@ jobs:
           GH_REPO: ${{ github.repository }}
   
   comment-on-pr:
+    name: Comment on PR after images built
     runs-on: ubuntu-latest
     needs: [fetch-data, build-pr-images]
     concurrency:
-      group: ${{ github.workflow }}-build-pr-image-${{ needs.fetch-data.outputs.pr_number }}
+      group: ${{ github.workflow }}-comment-on-pr-${{ needs.fetch-data.outputs.pr_number }}
       cancel-in-progress: true
     env:
       SOURCE_BRANCH: ${{ needs.fetch-data.outputs.head_sha }}
       TARGET_IMAGE_TAG: pr-${{ needs.fetch-data.outputs.pr_number }}        
     steps:
+      - uses: actions/checkout@v3
       - name: Echo PR metadata
         shell: bash
         env:
@@ -150,35 +150,28 @@ jobs:
 
           cat <<"EOF" >> /tmp/body-file.txt
             A set of new images have been built to help with testing out this PR: 
-              - ds-pipelines-api-server: `${{ env.FULLIMG_API_SERVER }}
-              run: |`
-              - ds-pipelines-frontend: `${{ env.FULLIMG_FRONTEND }}`
-              - ds-pipelines-cacheserver: `${{ env.FULLIMG_CACHESERVER }}`
-              - ds-pipelines-persistenceagent: `${{ env.FULLIMG_PERSISTENCEAGENT }}`
-              - ds-pipelines-scheduledworkflow: `${{ env.FULLIMG_SCHEDULEDWORKFLOW }}`
-              - ds-pipelines-viewercontroller: `${{ env.FULLIMG_VIEWERCONTROLLER }}`
-              - ds-pipelines-artifact-manager: `${{ env.FULLIMG_ARTIFACT_MANAGER }}`
-              - ds-pipelines-metadata-writer: `${{ env.FULLIMG_METADATA_WRITER }}`
-              - ds-pipelines-metadata-envoy: `${{ env.FULLIMG_METADATA_ENVOY }}`
-              - ds-pipelines-metadata-grpc: `${{ env.FULLIMG_METADATA_GRPC }}`
+            **API Server**: `${{ env.FULLIMG_API_SERVER }}`
+            **Persistence Agent**: `${{ env.FULLIMG_PERSISTENCEAGENT }}`
+            **Scheduled Workflow Manager**: `${{ env.FULLIMG_SCHEDULEDWORKFLOW }}`
+            **CRD Viewer Controller**: `${{ env.FULLIMG_VIEWERCONTROLLER }}`
+            **Artifact Manager**: `${{ env.FULLIMG_ARTIFACT_MANAGER }}`
+            **MLMD Server**: `${{ env.FULLIMG_METADATA_GRPC }}`
+            **MLMD Writer**: `${{ env.FULLIMG_METADATA_WRITER }}`
+            **MLMD Envoy Proxy**: `${{ env.FULLIMG_METADATA_ENVOY }}`
+            **Cache Server**: `${{ env.FULLIMG_CACHESERVER }}`
+            **UI**: `${{ env.FULLIMG_FRONTEND }}`
           EOF
 
+          gh pr comment ${{ needs.fetch-data.outputs.pr_number }} --body-file /tmp/body-file.txt
+
           if [[ "$action" == "opened" || "$action" == "reopened" ]]; then
-          cat <<"EOF" >> /tmp/body-file.txt
+          cat <<"EOF" >> /tmp/additional-comment.txt
           An OCP cluster where you are logged in as cluster admin is required.
 
-          The Data Science Pipelines team recommends testing this using the Data Science Pipelines Operator.
-          Check [here](https://github.com/opendatahub-io/data-science-pipelines-operator) for more information on using the DSPO.
+          The Data Science Pipelines team recommends testing this using the Data Science Pipelines Operator.  Check [here](https://github.com/opendatahub-io/data-science-pipelines-operator) for more information on using the DSPO.
 
-          To use and deploy a DSP stack with these images using this Operator, after deploying the DSPO above, run the following:
-
-          ```bash
-          cd $(mktemp -d)
-          git clone git@github.com:opendatahub-io/data-science-pipelines.git
-          cd data-science-pipelines/
-          git fetch origin pull/${{ needs.fetch-data.outputs.pr_number }}/head
-          git checkout -b pullrequest ${{ env.SOURCE_BRANCH }}
-          cat << "DSPA" >> dspa.pr-${{ needs.fetch-data.outputs.pr_number}}.yaml
+          To use and deploy a DSP stack with these images (assuming the DSPO is deployed), first save the following YAML to a file named `dspa.pr-${{ needs.fetch-data.outputs.pr_number}}.yaml`:
+          ```yaml
           apiVersion: datasciencepipelinesapplications.opendatahub.io/v1alpha1
           kind: DataSciencePipelinesApplication
           metadata:
@@ -209,24 +202,29 @@ jobs:
               minio:
                 deploy: true
                 image: 'quay.io/opendatahub/minio:RELEASE.2019-08-14T20-37-41Z-license-compliance'
-          DSPA
+          ```
+
+          Then run the following:
+
+          ```bash
+          cd $(mktemp -d)
+          git clone git@github.com:opendatahub-io/data-science-pipelines.git
+          cd data-science-pipelines/
+          git fetch origin pull/${{ needs.fetch-data.outputs.pr_number }}/head
+          git checkout -b pullrequest ${{ env.SOURCE_BRANCH }}
           oc apply -f dspa.pr-${{ needs.fetch-data.outputs.pr_number}}.yaml
           ```
 
           More instructions [here](https://github.com/opendatahub-io/data-science-pipelines-operator#deploy-dsp-instance) on how to deploy and test a Data Science Pipelines Application.
 
           EOF
+          gh pr comment ${{ needs.fetch-data.outputs.pr_number }} --body-file /tmp/additional-comment.txt
           fi
-
-          gh pr comment ${{ needs.fetch-data.outputs.pr_number }} --body-file /tmp/body-file.txt
-
   clean-pr-images:
+    name: Cleanup images if PR is closed
     if: needs.fetch-data.outputs.pr_state == 'closed'
     runs-on: ubuntu-latest
     needs: fetch-data
-    concurrency:
-      group: ${{ github.workflow }}-clean-pr-images-${{ needs.fetch-data.outputs.pr_number }}
-      cancel-in-progress: true
     env:
       TARGET_IMAGE_TAG: pr-${{ needs.fetch-data.outputs.pr_number }}
     strategy:
